@@ -74,7 +74,7 @@
     const f = document.createElement('iframe');
     f.src = WEB_APP_URL + '?key=' + encodeURIComponent(key);
     f.title = 'Tallyo';
-    f.allow = 'clipboard-write';
+    f.allow = 'clipboard-write; web-share';
     f.onload = () => setTimeout(() => document.getElementById('splash').classList.add('hide'), 400);
     document.body.appendChild(f);
   }
