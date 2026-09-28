@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tallyo</title>
+
+<!-- Home-screen name + icon (iPhone) -->
+<meta name="apple-mobile-web-app-title" content="Tallyo">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" sizes="180x180" href="favicon/apple-touch-icon.png">
+
+<!-- Browser tab icon -->
+<link rel="icon" type="image/png" sizes="96x96" href="favicon/favicon-96x96.png">
+<link rel="icon" type="image/svg+xml" href="favicon/favicon.svg">
+<link rel="shortcut icon" href="favicon/favicon.ico">
+<meta name="theme-color" content="#f3f4f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0c10" media="(prefers-color-scheme: dark)">
+
+<style>
+  :root { --bg: #f3f4f8; --card: #ffffff; --ink: #0f1222; --muted: #8a8ea3; --line: #e8e9f0; --accent: #2a78d6; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0b0c10; --card: #16171c; --ink: #f4f5f8; --muted: #858a9c; --line: #262830; --accent: #3987e5; } }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); overflow: hidden;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  iframe { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; display: block;
+    padding-top: env(safe-area-inset-top); background: var(--bg); }
+  .splash { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); transition: opacity .3s; z-index: 2; }
+  .splash.hide { opacity: 0; pointer-events: none; }
+  .splash img { width: 88px; height: 88px; border-radius: 22px; box-shadow: 0 10px 30px rgba(40,50,120,.25); animation: pulse 1.6s ease-in-out infinite; }
+  .splash p { margin: 18px 0 0; color: var(--muted); font-size: 14px; text-align: center; }
+  @keyframes pulse { 50% { transform: scale(.94); } }
+  .keybox { position: fixed; inset: 0; display: none; place-items: center; padding: 24px; background: var(--bg); z-index: 3; }
+  .keybox.show { display: grid; }
+  .keycard { width: min(360px, 100%); background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 24px; text-align: center; }
+  .keycard img { width: 64px; height: 64px; border-radius: 16px; }
+  .keycard h1 { font-size: 20px; margin: 12px 0 4px; }
+  .keycard p { color: var(--muted); font-size: 13.5px; margin: 0 0 16px; }
+  .keycard input { width: 100%; height: 46px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--ink);
+    padding: 0 14px; font-size: 15px; margin-bottom: 10px; }
+  .keycard button { width: 100%; height: 46px; border: 0; border-radius: 12px; background: var(--accent); color: #fff; font-size: 15px; font-weight: 700; }
+</style>
+</head>
+<body>
+  <div class="splash" id="splash">
+    <div><img src="favicon/apple-touch-icon.png" alt="Tallyo"><p>Loading Tallyo…</p></div>
+  </div>
+
+  <div class="keybox" id="keybox">
+    <form class="keycard" id="keyform">
+      <img src="favicon/apple-touch-icon.png" alt="">
+      <h1>Tallyo</h1>
+      <p>Enter your dashboard key once. It's saved on this device only.</p>
+      <input id="keyinput" type="password" autocomplete="current-password" placeholder="Dashboard key" required>
+      <button type="submit">Open dashboard</button>
+    </form>
+  </div>
+
+<script>
+  // ⬇️ Your Apps Script web app URL (ends in /exec). This is NOT secret by itself.
+  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyvbrC0Ufi3nQdmJoWrMlvWJKy0LoyvcMq6iDVys-XWJG7gkhbeG_kL8AmYaXijb7jsHA/exec';
+
+  // The dashboard key is never stored in this file (the repo is public).
+  // It comes from the link (#key=...) or is typed once and remembered on this device.
+  function getKey() {
+    const m = location.hash.match(/key=([^&]+)/);
+    if (m) { const k = decodeURIComponent(m[1]); try { localStorage.setItem('tallyo-key', k); } catch (e) {} return k; }
+    try { return localStorage.getItem('tallyo-key') || ''; } catch (e) { return ''; }
+  }
+
+  function open(key) {
+    const f = document.createElement('iframe');
+    f.src = WEB_APP_URL + '?key=' + encodeURIComponent(key);
+    f.title = 'Tallyo';
+    f.allow = 'clipboard-write';
+    f.onload = () => setTimeout(() => document.getElementById('splash').classList.add('hide'), 400);
+    document.body.appendChild(f);
+  }
+
+  const key = getKey();
+  if (key) open(key);
+  else {
+    document.getElementById('splash').classList.add('hide');
+    document.getElementById('keybox').classList.add('show');
+  }
+  document.getElementById('keyform').onsubmit = e => {
+    e.preventDefault();
+    const k = document.getElementById('keyinput').value.trim();
+    if (!k) return;
+    try { localStorage.setItem('tallyo-key', k); } catch (err) {}
+    document.getElementById('keybox').classList.remove('show');
+    document.getElementById('splash').classList.remove('hide');
+    open(k);
+  };
+</script>
+</body>
+</html>
