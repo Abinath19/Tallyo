@@ -25,8 +25,12 @@
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); overflow: hidden;
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  iframe { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; display: block;
-    padding-top: env(safe-area-inset-top); background: var(--bg); }
+  /* The dashboard fills the whole screen (no padding on the frame: padding breaks tap positions on iPhone).
+     The dashboard itself adds space for the notch / home bar, in its own theme colours. */
+  .frame { position: fixed; top: 0; left: 0; right: 0; bottom: 0; }
+  .frame iframe { display: block; width: 100%; height: 100%; border: 0; margin: 0; padding: 0; background: transparent; }
+  #probe { position: fixed; visibility: hidden; pointer-events: none;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
   .splash { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); transition: opacity .3s; z-index: 2; }
   .splash.hide { opacity: 0; pointer-events: none; }
   .splash img { width: 88px; height: 88px; border-radius: 22px; box-shadow: 0 10px 30px rgba(40,50,120,.25); animation: pulse 1.6s ease-in-out infinite; }
@@ -70,13 +74,45 @@
     try { return localStorage.getItem('tallyo-key') || ''; } catch (e) { return ''; }
   }
 
+  // Safe-area sizes (notch / Dynamic Island at the top, home bar at the bottom), in px
+  function insets() {
+    let p = document.getElementById('probe');
+    if (!p) { p = document.createElement('div'); p.id = 'probe'; document.body.appendChild(p); }
+    const c = getComputedStyle(p);
+    return { t: parseFloat(c.paddingTop) || 0, b: parseFloat(c.paddingBottom) || 0 };
+  }
+  const standalone = window.navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+  let frame = null;
+
+  // Send the insets down to the dashboard (it lives in a frame inside Google's frame)
+  function sendInsets() {
+    if (!frame || !frame.contentWindow) return;
+    const msg = { tallyo: 'insets', top: insets().t, bottom: insets().b, standalone };
+    const post = w => { try { w.postMessage(msg, '*'); for (let i = 0; i < w.frames.length; i++) post(w.frames[i]); } catch (e) {} };
+    post(frame.contentWindow);
+  }
+  addEventListener('resize', () => setTimeout(sendInsets, 150));
+  addEventListener('orientationchange', () => setTimeout(sendInsets, 300));
+
+  // The dashboard tells us its background colour, so anything behind it matches the chosen theme
+  addEventListener('message', e => {
+    const d = e.data;
+    if (!d || d.tallyo !== 'theme' || !/^#[0-9a-f]{3,8}$/i.test(d.bg || '')) return;
+    document.documentElement.style.background = document.body.style.background = d.bg;
+    document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', d.bg));
+    sendInsets();
+  });
+
   function open(key) {
+    const i = insets();
+    const wrap = document.createElement('div'); wrap.className = 'frame';
     const f = document.createElement('iframe');
-    f.src = WEB_APP_URL + '?key=' + encodeURIComponent(key);
+    f.src = WEB_APP_URL + '?key=' + encodeURIComponent(key) + '&sat=' + i.t + '&sab=' + i.b + (standalone ? '&app=1' : '');
     f.title = 'Tallyo';
     f.allow = 'clipboard-write; web-share';
-    f.onload = () => setTimeout(() => document.getElementById('splash').classList.add('hide'), 400);
-    document.body.appendChild(f);
+    f.onload = () => { sendInsets(); setTimeout(() => document.getElementById('splash').classList.add('hide'), 400); };
+    wrap.appendChild(f); document.body.appendChild(wrap); frame = f;
+    [1000, 2500, 5000].forEach(t => setTimeout(sendInsets, t));
   }
 
   const key = getKey();
