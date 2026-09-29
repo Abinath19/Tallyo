@@ -87,7 +87,7 @@
   // Send the insets down to the dashboard (it lives in a frame inside Google's frame)
   function sendInsets() {
     if (!frame || !frame.contentWindow) return;
-    const msg = { tallyo: 'insets', top: insets().t, bottom: insets().b, standalone };
+    const msg = { tallyo: 'insets', top: insets().t, bottom: insets().b, vh: innerHeight, standalone };
     const post = w => { try { w.postMessage(msg, '*'); for (let i = 0; i < w.frames.length; i++) post(w.frames[i]); } catch (e) {} };
     post(frame.contentWindow);
   }
@@ -107,7 +107,7 @@
     const i = insets();
     const wrap = document.createElement('div'); wrap.className = 'frame';
     const f = document.createElement('iframe');
-    f.src = WEB_APP_URL + '?key=' + encodeURIComponent(key) + '&sat=' + i.t + '&sab=' + i.b + (standalone ? '&app=1' : '');
+    f.src = WEB_APP_URL + '?key=' + encodeURIComponent(key) + '&sat=' + i.t + '&sab=' + i.b + '&vh=' + innerHeight + (standalone ? '&app=1' : '');
     f.title = 'Tallyo';
     f.allow = 'clipboard-write; web-share';
     f.onload = () => { sendInsets(); setTimeout(() => document.getElementById('splash').classList.add('hide'), 400); };
